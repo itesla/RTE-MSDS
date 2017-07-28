@@ -52,40 +52,20 @@ def FwriteFiles(MachinesdtaPath,generators):
 			if line.startswith("M2       U") or line.startswith("M2       S"):
 				#Correcting node data :
 				#----------------------
-				
-				
-				
-				# node = lines[i+1].split(" ", 2)
-				# node[1] = "N1".ljust(len(node[1]))
-				# lines[i+1] = " ".join(node)
-				# #Writing specific machine file :
-				# #--------------------------------
-				# MachineName = lines[i+1].split(None, 1)[0]
-				# if MachineName in generators[:,1]:
-					# gen_in = np.append(generators[MachineName==generators[:,1],:],lines[i+1].split()[2])
-					# gen_in = np.append(gen_in,lines[i+1].split()[3])
-					# generators_in = np.vstack((generators_in,gen_in))
-					# MachineRefName = generators[MachineName==generators[:,1],0][0]
-					# if not os.path.exists(MachineRefName):
-						# os.makedirs(MachineRefName)
-				node = lines[i+1].split(" ", 3)
-				node[2] = "N1".ljust(len(node[2]))
+				node = lines[i+1].split(" ", 2)
+				node[1] = "N1".ljust(len(node[1]))
 				lines[i+1] = " ".join(node)
 				#Writing specific machine file :
 				#--------------------------------
-				MachineName = lines[i+1][0:8]
-				if MachineName in generators[:,0]:
-					gen_in = np.append(generators[MachineName==generators[:,0],:],lines[i+1].split()[3])
-					gen_in = np.append(gen_in,lines[i+1].split()[4])
+				MachineName = lines[i+1].split(None, 1)[0]
+				if MachineName in generators[:,1]:
+					gen_in = np.append(generators[MachineName==generators[:,1],:],lines[i+1].split()[2])
+					gen_in = np.append(gen_in,lines[i+1].split()[3])
 					generators_in = np.vstack((generators_in,gen_in))
-					MachineRefName = generators[MachineName==generators[:,0],0][0]
+					MachineRefName = generators[MachineName==generators[:,1],0][0]
 					if not os.path.exists(MachineRefName):
 						os.makedirs(MachineRefName)
-						
-						
-						
-						
-						
+
 						time.sleep(0.1)
 
 						filename = 'simTest' + '.dta'
@@ -141,15 +121,15 @@ def FreadGenerators(GeneratorsPath):
 		Used in :
 			- main
 	"""	
-	generators = np.zeros(shape=(0,2))
+	generators = np.zeros(shape=(0,4))
 
 	with open(GeneratorsPath,'r') as GeneratorsFile:
 		lines = GeneratorsFile.readlines()
 
 	for line in lines:
-		generators = np.vstack((generators,line.split("  ")))
+		generators = np.vstack((generators,line.split()))
 
-	return generators
+	return generators 
 
 def FcopyRegulators(regulators, MachineName):
 	""" 
@@ -194,39 +174,28 @@ def FwriteSeq(MachineName):
 		f.write('   1000. STOP')
 		f.write(' \n \n')
 
-def FcallProgram(generator):
-	""" 
-		Call MachineStableDomainSearch.py for the generator in input 
-		Inputs  :
-			- generator
-		Outputs : 
-			- outputs of MachineStableDomainSearch.py
-		Used in :
-			- main
-	"""
 
+def FcallProgram2(generator):	
+	
 	print "Currently working on : ", generator[0]
-	# Moving to file of generator :
-	# -----------------------------
 	os.chdir(generator[0])
-
-	# Lauching python process :
-	# -------------------------
-	python_process = os.path.join("..","MachineStableDomainSearch.py -v 4 -i 0")
+	
+	python_process = os.path.join("..","MachineStableDomainSearch2.py -v 1 -i 0")
 	time_start = time.clock()
-	with open("output.txt",'w') as f:
+	with open("output_indus2.txt",'w') as f:
 		try:
 			subprocess.call("python " + python_process, stdout=f, stderr=subprocess.STDOUT)
 		except:
 			f.write("WARNING : La recherche n'a pas pu être lancé")
 	time_elapsed = (time.clock() - time_start)
-
-	print generator[0], " is Done : ", time_elapsed 
+	
+	print generator[0], "is Done : ", time_elpsed
 	time.sleep(0.1)
-	# Moving back to parent folder
 	os.chdir("..")
 
-def FappendResults(generators):
+
+	
+def FappendResults2(generators):
 	"""
 		Append the results of computed domain to a single text file
 		Inputs : 
@@ -237,15 +206,15 @@ def FappendResults(generators):
 			- main
 	"""
 
-	generator_prob = np.zeros(shape=(0,4)) # List of generators with problems
+	generator_problematiques = np.zeros(shape=(0,4)) # List of generators with problems
 
-	with open("ampl_generators_domains.txt", "w") as f: 
+	with open("ampl_generators_domains_simplifie.txt", "w") as f: 
 		f.write("# " + time.strftime("%d/%m/%y") + "\n")
 		f.write("#num id P(MW) Q(MVar) V(kV) RHS(lt) " + "Vnominal(kV)" + " " + "id_internal" + "\n")
 
-	with open("ampl_generators_domains.txt", "a") as f: 
+	with open("ampl_generators_domains_simplifie.txt", "a") as f: 
 		for generator in generators:
-			resultfile = os.path.join(generator[0],"ampl_generators_domains.txt")
+			resultfile = os.path.join(generator[0],"ampl_generators_domains_MCsvmPQU.txt")
 			try:
 				with open(resultfile,'r') as f_res:
 					lines = f_res.readlines()
@@ -253,11 +222,24 @@ def FappendResults(generators):
 						if '#' not in line:
 							f.write(line)
 			except IOError:
-				generator_prob = np.vstack((generator_prob,generator))
+				generator_problematiques = np.vstack((generator_problematiques,generator))
 
 			time.sleep(0.1)
 
-	return generator_prob
+	return generator_problematiques
+	
+'''def Fconstraints(generators_unstabled):
+	
+	with open("generators_constraints.txt", "w") as f: 
+		f.write("# " + time.strftime("%d/%m/%y") + "\n")
+		f.write("#num id P(MW) Q(MVar) V(kV) RHS(lt) " + "Vnominal(kV)" + " " + "id_internal" + "\n")
+		
+	with open("generators_constraints.txt", "r+") as f:
+		for generator in generators_unstabled:'''
+			
+
+	
+	
 if __name__ == '__main__':
 
 	# Get list of worker from cpu count
@@ -272,15 +254,12 @@ if __name__ == '__main__':
 	GeneratorsPath = os.path.join(GeneratorsFile) # Path of file containing generators to test
 
 	generators    = FreadGenerators(GeneratorsPath)
-	generators_in, generators_out = FwriteFiles(RefdtaPath, generators)
-
-	np.savetxt('generators_in_info.txt', generators_in, fmt='%s')
-
+	
 	print "Files have all been written \n"
 
 	pool = mp.Pool(processes=PROCESSES)
-	for generator in generators_in:
-		pool.apply_async(FcallProgram, args=(generator,))
+	for generator in generators:
+		pool.apply_async(FcallProgram2, args=(generator,))
 		time.sleep(0.1)
 	pool.close()
 	pool.join()
@@ -289,14 +268,12 @@ if __name__ == '__main__':
 	time.sleep(1)
 	
 	print "Fin du calcul - Concatenation des resultats"
-	generators_prob = FappendResults(generators_in)
+	generators_prob = FappendResults2(generators)
 
 	print "Liste des generateurs ayant eu un prb : \n" , generators_prob
-	np.savetxt('generators_pb.txt',generators_prob, fmt='%s')
-	print "Un export a ete fait dans le fichier :\n > generators_pb.txt \n"
-	print "Liste des generateurs non inclu dans le .dta : \n" , generators_out
-	np.savetxt('generators_out.txt',generators_out, fmt='%s')
-	print "Un export a ete fait dans le fichier :\n > generators_out.txt \n"
+	np.savetxt('generators_pb2.txt',generators_prob, fmt='%s')
+	print "Un export a ete fait dans le fichier :\n > generators_pb2.txt \n"
+	
 
-
+	
 	
